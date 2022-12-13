@@ -3,6 +3,7 @@
 
 import fileinput
 import sys
+import ast
 
 test_input="""[1,1,3,1,1]
 [1,1,5,1,1]
@@ -38,8 +39,8 @@ def read_input(inputs):
     it = iter(inputs)
     try:
         while True:
-            l1 = eval(next(it).strip())
-            l2 = eval(next(it).strip())
+            l1 = ast.literal_eval(next(it).strip())
+            l2 = ast.literal_eval(next(it).strip())
             out.append((l1, l2))
             next(it)
     except:
