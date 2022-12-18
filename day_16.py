@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 #encoding: UTF-8
 
-# part 2 will take a few hours...
-
 import fileinput
 import sys
 import re
@@ -63,9 +61,6 @@ def work_p1(inputs):
             distances[v1] = distances.setdefault(v1, {}) | {v2:d}
             distances[v2] = distances.setdefault(v2, {}) | {v1:d}
     
-    # for v2, d in distances['AA'].items():
-        # print(v2, d, (30-d - 1)*valves[v2][1])
-    
     State = namedtuple("State", ["valve", "score", "to_visit", "rem"])
     stack = [State("AA", 0, [v[0] for v in productive_valves], 30)]
     best = 0
@@ -108,78 +103,35 @@ def work_p2(inputs):
             distances[v1] = distances.setdefault(v1, {}) | {v2:d}
             distances[v2] = distances.setdefault(v2, {}) | {v1:d}
     
-    # objectives: list of nodes to visit, (node, distance)
-    #             the distance includes +1 to open the valve
-    # flow: flow of the opened valves
-    # score: deplaced volume
-    # to_visit: set of productives valves yet to visit
-    # rem: time remaining
-    State = namedtuple("State", ["objectives", "flow", "score", "to_visit", "rem"])
-    pv = set(v[0] for v in productive_valves)
-    stack = deque()
-    for nv1, nv2 in combinations(pv, 2):
-        d1, d2 = distances["AA"][nv1] + 1, distances["AA"][nv2] + 1
-        if d1 <= 26 and d2 <= 26:
-            stack.append(State([(nv1, d1), (nv2, d2)], 0, 0, pv - {nv1, nv2}, 26))
+    # associate one bit to each productive valve, to build a bitmask of the visited valves
+    bits = {}
+    for i in range(len(productive_valves)):
+        bits[productive_valves[i][0]] = 1 << (i + 1)
     
-    best = 0
+    State = namedtuple("State", ["valve", "score", "to_visit", "rem", "mask"])
+    stack = [State("AA", 0, [v[0] for v in productive_valves], 26, 0)]
+    bests = {}      # store the best score for a given bitmask
     while len(stack) != 0:
-        state = stack.pop()
-        
-        # number of minutes to simulate
-        delta = state.rem
-        if len(state.objectives) != 0:
-            delta = min(o[1] for o in state.objectives)
-        if delta > state.rem:
-            delta = state.rem
-        rem = state.rem - delta
-        
+        state = stack.pop(0)
+        v1 = state.valve
         score = state.score
-        flow = state.flow
-        score += flow * delta
-        
-        if rem == 0:
-            if score > best:
-                print(score, state)
-                best = score
-            continue
-        
-        nobjs = []
-        starting_points = []
-        for o in state.objectives:
-            if o[1] != delta:
-                nobjs.append((o[0], o[1] - delta))
-            else:
-                flow += valves[o[0]][1]
-                starting_points.append(o[0])
-        
-        to_fill = 2 - len(nobjs)
-                
-        if len(state.to_visit) == 0:
-            stack.append(State(nobjs, flow, score, state.to_visit, rem))
-        else:
-            if to_fill == 2 and len(state.to_visit) >= 2:
-                for nv1, nv2 in combinations(state.to_visit, 2):
-                    nobjs1 = [(nv1, distances[starting_points[0]][nv1] + 1), (nv2, distances[starting_points[1]][nv2] + 1)]
-                    stack.append(State(nobjs1, flow, score, state.to_visit - {nv1, nv2}, rem))
-                    nobjs2 = [(nv2, distances[starting_points[0]][nv2] + 1), (nv1, distances[starting_points[1]][nv1] + 1)]
-                    stack.append(State(nobjs2, flow, score, state.to_visit - {nv1, nv2}, rem))
-            elif to_fill == 2 and len(state.to_visit) == 1:
-                for nv in state.to_visit:
-                    nobjs1 = nobjs + [(nv, distances[starting_points[0]][nv] + 1)]
-                    stack.append(State(nobjs1, flow, score, state.to_visit - {nv}, rem))
-                    nobjs2 = nobjs + [(nv, distances[starting_points[1]][nv] + 1)]
-                    stack.append(State(nobjs2, flow, score, state.to_visit - {nv}, rem))
-            elif to_fill == 1:
-                for nv in state.to_visit:
-                    nobjs_ = nobjs + [(nv, distances[starting_points[0]][nv] + 1)]
-                    stack.append(State(nobjs_, flow, score, state.to_visit - {nv}, rem))
-            elif to_fill == 0:
-                stack.append(State(nobjs, flow, score, state.to_visit, rem))
-
-                    
-
-    return best
+        if score > bests.get(state.mask, 0):
+            bests[state.mask] = score
+        for i in range(len(state.to_visit)):
+            v2 = state.to_visit[i]
+            d = distances[v1][v2]
+            if d + 1 >= state.rem:
+                continue
+            gain = (state.rem - d - 1) * valves[v2][1]
+            stack.append(State(v2, score + gain, state.to_visit[0:i] + state.to_visit[i+1:], state.rem - d - 1, state.mask + bits[v2]))
+    
+    # find the best 2 disjoint paths using the bitmasks!
+    ret = 0
+    for k1, s1 in bests.items():
+        for k2, s2 in bests.items():
+            if (k1 & k2) == 0 and (s1 + s2) > ret:
+                ret = s1 + s2
+    return ret
             
 
 def test_p1():
@@ -196,4 +148,4 @@ test_p2()
 
 def p2():
     print(work_p2(fileinput.input()))
-# p2()
+p2()
