@@ -5,6 +5,7 @@ import fileinput
 import sys
 from collections import deque, namedtuple
 from enum import Enum
+import math
 
 test_input="""#.######
 #>>.<^<#
@@ -76,7 +77,7 @@ def work_p1_p2(inputs, part2 = False):
                 return True
         return False
     
-    period = (width - 2) * (height - 2)
+    period = math.lcm(width - 2, height - 2)
     State = namedtuple("State", ["pt", "tstamp"])
 
     best = 0
